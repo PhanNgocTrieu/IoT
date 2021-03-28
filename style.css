@@ -1,0 +1,36 @@
+#DHTServer {
+    align-content: center;
+    text-align: center;
+    font-size: 50px;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    color: blue;
+}
+
+.First_Part{
+    font: optional;
+}
+
+.Table_of_Value_from_DHT11,tr,td,th {
+    font-size: 50px;
+    margin: auto;
+    border: solid;
+}
+
+.canvas {
+    margin: auto;
+}
+
+#Water_pumper {
+    margin: auto;
+}
+
+.div {
+    display: block;
+    height: 20px;
+    align-items: center;
+    float: left;
+}
+/* 
+.body {
+    
+} */
