@@ -91,6 +91,7 @@ void loop() {
     // Read temperature as Celsius (the default)
     temperatureC = getTemperature();
     
+    http.begin();
     // Specify content-type header
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     
