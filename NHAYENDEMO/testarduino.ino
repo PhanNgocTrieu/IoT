@@ -17,6 +17,118 @@
 #include <Adafruit_MQTT.h>
 #include <Adafruit_MQTT_Client.h>
 #include <ArduinoJson.h>
+#include <AsyncMqttClient.h>
+#include <Ticker.h>
+
+/* ===================== MQTT's variables ===========================*/
+AsyncMqttClient mqttClient;
+Ticker mqttReconnectTimer;
+Ticker wifiReconnectTimer;
+
+WiFiEventHandler wifiConnectHandler;
+WiFiEventHandler wifiDisconnectHandler;
+
+#define WIFI_SSID "Le An"
+#define WIFI_PASSWORD "hohoa46491990"
+
+
+#define MQTT_HOST IPAddress(192, 168, 1, 8) // our ID address
+#define MQTT_PORT 1883
+
+#define PIN_PUMP D8
+
+/* ====================== MQTT's functions ==========================*/
+void connectToWifi() {
+  Serial.println("Connecting to Wi-Fi...");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+}
+
+void onWifiConnect(const WiFiEventStationModeGotIP& event) {
+  Serial.println("Connected to Wi-Fi.");
+  connectToMqtt();
+}
+
+void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
+  Serial.println("Disconnected from Wi-Fi.");
+  mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+  wifiReconnectTimer.once(2, connectToWifi);
+}
+
+void connectToMqtt() {
+  Serial.println("Connecting to MQTT...");
+  mqttClient.connect();
+}
+ 
+void onMqttConnect(bool sessionPresent) {
+  Serial.println("Connected to MQTT.");
+  Serial.print("Session present: ");
+  Serial.println(sessionPresent);
+  uint16_t packetIdSub = mqttClient.subscribe("D8/on", 2);
+  Serial.print("Subscribing at QoS 2, packetId: ");
+  Serial.println(packetIdSub);
+
+  // publish
+  mqttClient.publish("test/lol", 0, true, "test 1");
+  Serial.println("Publishing at QoS 0");
+  uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
+  Serial.print("Publishing at QoS 1, packetId: ");
+  Serial.println(packetIdPub1);
+  uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
+  Serial.print("Publishing at QoS 2, packetId: ");
+  Serial.println(packetIdPub2);
+}
+
+void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
+  Serial.println("Disconnected from MQTT.");
+
+  if (WiFi.isConnected()) {
+    mqttReconnectTimer.once(2, connectToMqtt);
+  }
+}
+
+void onMqttSubscribe(uint16_t packetId, uint8_t qos) {
+  Serial.println("Subscribe acknowledged.");
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+  Serial.print("  qos: ");
+  Serial.println(qos);
+}
+
+void onMqttUnsubscribe(uint16_t packetId) {
+  Serial.println("Unsubscribe acknowledged.");
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+}
+
+void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+  Serial.println("Publish received.");
+  Serial.print("  topic: ");
+  Serial.println(topic);
+  Serial.print("  qos: ");
+  Serial.println(properties.qos);
+  Serial.print("  dup: ");
+  Serial.println(properties.dup);
+  Serial.print("  retain: ");
+  Serial.println(properties.retain);
+  Serial.print("  len: ");
+  Serial.println(len);
+  Serial.print("  index: ");
+  Serial.println(index);
+  Serial.print("  total: ");
+  Serial.println(total);
+}
+
+void onMqttPublish(uint16_t packetId) {
+  Serial.println("Publish acknowledged.");
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+  digitalWrite(PIN_PUMP,HIGH);
+  delay(1000);
+  digitalWrite(PIN_PUMP,LOW);
+}
+
+/* ==================== END OF MQTT's Declaration =============================*/
+
 
 
 /*======================== Defination of PIN ================================*/
@@ -27,11 +139,11 @@
 /*************************** Sketch Code ************************************/
 
 // Replace with your network credentials
-const char* ssid     = "CAO COFFEE & OFFICE"; // "Le An"
-const char* password = "68686868"; // "hohoa46481990"
+const char* ssid     = "Le An"; // "Le An"
+const char* password = "hohoa46491990"; // "hohoa46491990"
  
 // REPLACE with your Domain name and URL path or IP address with path
-const char* serverName = "http://192.168.1.8/esp_data.php";
+const char* serverName = "http://192.168.1.8/esp_data.php"; // checking IP - cmd -> ipconfig => when changing wifi -> Ip would be change
  
 //const int oneWireBus = 4;
 // Keep this API Key value to be compatible with the PHP code provided in the project page. 
@@ -62,10 +174,13 @@ float getHumidity()
 }
 
 void setup() {
-
+  /* ========== MQTT ===========*/
+  wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
+  wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
   /* ========== HTTP ===========*/
   pinMode(16, OUTPUT);
   pinMode(2, OUTPUT);
+  pinMode(PIN_PUMP,OUTPUT);
   digitalWrite(16, LOW); // chưa kết nối;
    
   Serial.begin(115200);
@@ -90,6 +205,15 @@ void setup() {
 }
 
 void loop() {
+
+  mqttClient.onConnect(onMqttConnect);
+  mqttClient.onDisconnect(onMqttDisconnect);
+  mqttClient.onSubscribe(onMqttSubscribe);
+  mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.onPublish(onMqttPublish); // Call Publish function
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+
   //Check WiFi connection status
   if(WiFi.status()== WL_CONNECTED){
     digitalWrite(16, HIGH);  // đã kết nối
