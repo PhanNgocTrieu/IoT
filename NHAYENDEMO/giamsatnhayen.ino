@@ -67,10 +67,10 @@ Adafruit_MQTT_Client mqtt(&client, SERVER, PORT, USERNAME, PASSWORD);
 
 // Setup a feed called 'assetPub' for publishing.
 // Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
-Adafruit_MQTT_Publish assetPub = Adafruit_MQTT_Publish(&mqtt, "up/client/" USERNAME "/asset/" DEVICE_ID);
+Adafruit_MQTT_Publish assetPub = Adafruit_MQTT_Publish(&mqtt, "up/client/" USERNAME);
 
 // Setup a feed called 'assetSub' for subscribing to changes.
-Adafruit_MQTT_Subscribe assetSub = Adafruit_MQTT_Subscribe(&mqtt, "down/client/" USERNAME "/asset/" DEVICE_ID);
+Adafruit_MQTT_Subscribe assetSub = Adafruit_MQTT_Subscribe(&mqtt, "down/client/" USERNAME);
 
 
 float getTemperature()
