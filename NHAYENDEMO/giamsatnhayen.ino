@@ -27,8 +27,8 @@
 /*************************** Sketch Code ************************************/
 
 // Replace with your network credentials
-const char* ssid     = "Le An";
-const char* password = "hohoa46491990";
+const char* ssid     = "CAO COFFEE & OFFICE"; // "Le An"
+const char* password = "68686868"; // "hohoa46481990"
  
 // REPLACE with your Domain name and URL path or IP address with path
 const char* serverName = "http://192.168.1.8/esp_data.php";
@@ -48,7 +48,7 @@ DHT dht(DHTPIN, DHT11);
 
 /************************* Adafruit.io Setup *********************************/
 
-#define SERVER    "http://localhost/" // Server was written by php
+#define SERVER    "127.0.0.1" 
 #define PORT      1883
 #define USERNAME  "root"
 #define PASSWORD  ""
@@ -70,7 +70,7 @@ Adafruit_MQTT_Client mqtt(&client, SERVER, PORT, USERNAME, PASSWORD);
 Adafruit_MQTT_Publish assetPub = Adafruit_MQTT_Publish(&mqtt, "up/client/" USERNAME);
 
 // Setup a feed called 'assetSub' for subscribing to changes.
-Adafruit_MQTT_Subscribe assetSub = Adafruit_MQTT_Subscribe(&mqtt, "down/client/" USERNAME);
+Adafruit_MQTT_Subscribe assetSub = Adafruit_MQTT_Subscribe(&mqtt, "down/light/" USERNAME);
 
 
 float getTemperature()
@@ -94,14 +94,26 @@ int LIGHTPIN = 15; //D8
 String sPayload;
 char* cPayload;
 
-void setup() {
+void MQTT_connect() {
+ int8_t ret;
 
-  /* =================== MQTT ============*/
-  Bridge.begin();
-  Console.begin();
-  
-  // Setup MQTT subscription for onoff feed.
-  mqtt.subscribe(&assetSub);
+ // Stop if already connected.
+ if (mqtt.connected()) {
+   return;
+ }
+
+ Console.print("Connecting to MQTT... ");
+
+ while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+      Console.println(mqtt.connectErrorString(ret));
+      Console.println("Retrying MQTT connection in 5 seconds...");
+      mqtt.disconnect();
+      delay(5000);  // wait 5 seconds
+ }
+ Console.println("MQTT Connected!");
+}
+
+void setup() {
 
   // initialize digital pin LED_BUILTIN as an output.
   //pinMode(LED_BUILTIN, OUTPUT);
@@ -135,6 +147,14 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   pinMode(LIGHTPIN, OUTPUT); // D8 is output pin}
+
+  
+  /* =================== MQTT ============*/
+  Bridge.begin();
+  Console.begin();
+  
+  // Setup MQTT subscription for onoff feed.
+  mqtt.subscribe(&assetSub);
 }
 
 void loop() {
@@ -190,7 +210,7 @@ void loop() {
   }
 
   /*=========== MQTT ==========*/
-  // lack of somethings - a broker so we could not use this one
+
   MQTT_connect();
   
   /* ======= PUBLISHING ====== */
@@ -222,43 +242,24 @@ void loop() {
 
   /* ============ Subcriber ==============*/
   // this is our 'wait for incoming subscription packets' busy subloop
-  Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqtt.readSubscription(300))) {
-    if (subscription == &assetSub) {
-     Console.print(F("Got: "));
-     Console.println((char *)assetSub.lastread);
-    
-     if (strcmp((char *)assetSub.lastread, "ON") == 0) {
-       digitalWrite(LIGHTPIN, HIGH);
-     }
-     if (strcmp((char *)assetSub.lastread, "OFF") == 0) {
-       digitalWrite(LIGHTPIN, LOW);
-     }
-    }
-  }
-  
-  // ping the server to keep the mqtt connection alive
-  if(! mqtt.ping()) {
-  Console.println(F("MQTT Ping failed."));
-  }
-  delay(9000);  // wait 9 seconds
-}
-
-void MQTT_connect() {
- int8_t ret;
-
- // Stop if already connected.
- if (mqtt.connected()) {
-   return;
- }
-
- Console.print("Connecting to MQTT... ");
-
- while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-      Console.println(mqtt.connectErrorString(ret));
-      Console.println("Retrying MQTT connection in 5 seconds...");
-      mqtt.disconnect();
-      delay(5000);  // wait 5 seconds
- }
- Console.println("MQTT Connected!");
+//  Adafruit_MQTT_Subscribe *subscription;
+//  while ((subscription = mqtt.readSubscription(300))) {
+//    if (subscription == &assetSub) {
+//     Console.print(F("Got: "));
+//     Console.println((char *)assetSub.lastread);
+//    
+//     if (strcmp((char *)assetSub.lastread, "ON") == 0) {
+//       digitalWrite(LIGHTPIN, HIGH);
+//     }
+//     if (strcmp((char *)assetSub.lastread, "OFF") == 0) {
+//       digitalWrite(LIGHTPIN, LOW);
+//     }
+//    }
+//  }
+//  
+//  // ping the server to keep the mqtt connection alive
+//  if(! mqtt.ping()) {
+//  Console.println(F("MQTT Ping failed."));
+//  }
+//  delay(9000);  // wait 9 seconds
 }
