@@ -120,7 +120,7 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
 void onMqttPublish(uint16_t packetId) {
   Serial.println("Publish acknowledged.");
-  Serial.print("  packetId: ");
+  Serial.print("  packetId: "); 
   Serial.println(packetId);
   digitalWrite(PIN_PUMP,HIGH);
   delay(1000);
@@ -174,6 +174,14 @@ float getHumidity()
 }
 
 void setup() {
+  mqttClient.onConnect(onMqttConnect);
+  //mqttClient.onDisconnect(onMqttDisconnect);
+  mqttClient.onSubscribe(onMqttSubscribe);
+  //mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.onPublish(onMqttPublish); // Call Publish function
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  
   /* ========== MQTT ===========*/
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
@@ -205,14 +213,6 @@ void setup() {
 }
 
 void loop() {
-
-  mqttClient.onConnect(onMqttConnect);
-  mqttClient.onDisconnect(onMqttDisconnect);
-  mqttClient.onSubscribe(onMqttSubscribe);
-  mqttClient.onUnsubscribe(onMqttUnsubscribe);
-  mqttClient.onMessage(onMqttMessage);
-  mqttClient.onPublish(onMqttPublish); // Call Publish function
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
 
   //Check WiFi connection status
   if(WiFi.status()== WL_CONNECTED){
