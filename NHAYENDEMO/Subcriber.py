@@ -14,7 +14,7 @@ def on_message(client, userdata, msg):
 client = paho.Client()
 client.on_subscribe = on_subscribe
 client.on_message = on_message
-client.connect("broker.hivemq.com", 1883)
-client.subscribe([("esp/bme680/temperature", 0), ("esp/bme680/humidity", 0)])
+client.connect("localhost", 1883)
+client.subscribe([("esp/trieu/temperature", 0), ("esp/trieu/himidity", 0)])
 
 client.loop_forever()
