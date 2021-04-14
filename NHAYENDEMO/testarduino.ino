@@ -20,22 +20,27 @@
 #include <AsyncMqttClient.h>
 #include <Ticker.h>
 
-/* ===================== MQTT's variables ===========================*/
-AsyncMqttClient mqttClient;
-Ticker mqttReconnectTimer;
-Ticker wifiReconnectTimer;
-
-WiFiEventHandler wifiConnectHandler;
-WiFiEventHandler wifiDisconnectHandler;
 
 #define WIFI_SSID "Le An"
 #define WIFI_PASSWORD "hohoa46491990"
 
-
-#define MQTT_HOST IPAddress(192, 168, 1, 8) // our ID address
+// for using MQTT
+#define MQTT_HOST IPAddress(192,168,1,8)
 #define MQTT_PORT 1883
 
-#define PIN_PUMP D8
+// Temperature MQTT Topics
+#define MQTT_PUB_TEMP "esp/trieu/temperature"
+#define MQTT_PUB_HUM  "esp/trieu/humidity"
+
+
+AsyncMqttClient mqttClient;
+Ticker mqttReconnectTimer;
+
+WiFiEventHandler wifiConnectHandler;
+WiFiEventHandler wifiDisconnectHandler;
+
+Ticker wifiReconnectTimer;
+
 
 /* ====================== MQTT's functions ==========================*/
 void connectToWifi() {
@@ -63,7 +68,7 @@ void onMqttConnect(bool sessionPresent) {
   Serial.println("Connected to MQTT.");
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
-  uint16_t packetIdSub = mqttClient.subscribe("D8/on", 2);
+  uint16_t packetIdSub = mqttClient.subscribe("D8/on", 2); // nhận => subcribe
   Serial.print("Subscribing at QoS 2, packetId: ");
   Serial.println(packetIdSub);
 
@@ -120,11 +125,8 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
 void onMqttPublish(uint16_t packetId) {
   Serial.println("Publish acknowledged.");
-  Serial.print("  packetId: "); 
+  Serial.print("  packetId: ");
   Serial.println(packetId);
-  digitalWrite(PIN_PUMP,HIGH);
-  delay(1000);
-  digitalWrite(PIN_PUMP,LOW);
 }
 
 /* ==================== END OF MQTT's Declaration =============================*/
@@ -143,17 +145,22 @@ const char* ssid     = "Le An"; // "Le An"
 const char* password = "hohoa46491990"; // "hohoa46491990"
  
 // REPLACE with your Domain name and URL path or IP address with path
-const char* serverName = "http://192.168.1.8/esp_data.php"; // checking IP - cmd -> ipconfig => when changing wifi -> Ip would be change
+//const char* serverName = "http://192.168.1.8/esp_data.php"; // checking IP - cmd -> ipconfig => when changing wifi -> Ip would be change
  
+/*================= php My admin ===========*/
 //const int oneWireBus = 4;
 // Keep this API Key value to be compatible with the PHP code provided in the project page. 
 // If you change the apiKeyValue value, the PHP file /post-esp-data.php also needs to have the same key 
-String apiKeyValue = "kjsjkhjdhfd";
+//String apiKeyValue = "kjsjkhjdhfd";
  
-String sensorName = "DHT11";
-String sensorLocation = "home";
-float temperatureC = 0.0;
+//String sensorName = "DHT11";
+//String sensorLocation = "home";
+
+
+
+float temperature = 0.0;
 float humidity = 0.0;  
+
 DHT dht(DHTPIN, DHT11);
 
 float getTemperature()
@@ -174,21 +181,12 @@ float getHumidity()
 }
 
 void setup() {
-  mqttClient.onConnect(onMqttConnect);
-  //mqttClient.onDisconnect(onMqttDisconnect);
-  mqttClient.onSubscribe(onMqttSubscribe);
-  //mqttClient.onUnsubscribe(onMqttUnsubscribe);
-  mqttClient.onMessage(onMqttMessage);
-  mqttClient.onPublish(onMqttPublish); // Call Publish function
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-  
   /* ========== MQTT ===========*/
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
   /* ========== HTTP ===========*/
   pinMode(16, OUTPUT);
   pinMode(2, OUTPUT);
-  pinMode(PIN_PUMP,OUTPUT);
   digitalWrite(16, LOW); // chưa kết nối;
    
   Serial.begin(115200);
@@ -214,6 +212,14 @@ void setup() {
 
 void loop() {
 
+  mqttClient.onConnect(onMqttConnect);
+  mqttClient.onDisconnect(onMqttDisconnect);
+  mqttClient.onSubscribe(onMqttSubscribe);
+  mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.onPublish(onMqttPublish); // Call Publish function
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+
   //Check WiFi connection status
   if(WiFi.status()== WL_CONNECTED){
     digitalWrite(16, HIGH);  // đã kết nối
@@ -225,34 +231,8 @@ void loop() {
     humidity = getHumidity();
     
     // Read temperature as Celsius (the default)
-    temperatureC = getTemperature();
+    temperature = getTemperature();
     
-    // Specify content-type header
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    
-    // Prepare your HTTP POST request data
-    String httpRequestData = "api_key=" + apiKeyValue + "&sensor=" + sensorName + "&location=" + sensorLocation + "&temp=" + temperatureC + "&hum="+ humidity;
-    
-    Serial.print("httpRequestData: ");
-    Serial.println(httpRequestData);
-    
-    // Send HTTP POST request
-    
-    int httpResponseCode = http.POST(httpRequestData);
-    
-    String payload = http.getString();
-        
-    if (httpResponseCode>0) {
-      Serial.print("HTTP Response code: ");
-      Serial.println(httpResponseCode);
-      Serial.println(payload);  
-    }
-    else {
-      Serial.print("Error code: ");
-      Serial.println(httpResponseCode);
-    }
-    // Free resources
-    http.end();
     //Send an HTTP POST request every 6 seconds
     delay(6000);  // 60s
   }
@@ -264,4 +244,14 @@ void loop() {
     digitalWrite(2, LOW); 
     delay(250);
   }
+
+  // Publish an MQTT message on topic esp/trieu/temperature
+    uint16_t packetIdPub1 = mqttClient.publish(MQTT_PUB_TEMP, 1, true, String(temperature).c_str());
+    Serial.printf("Publishing on topic %s at QoS 1, packetId: %i", MQTT_PUB_TEMP, packetIdPub1);
+    Serial.printf("Message: %.2f \n", temperature);
+
+    // Publish an MQTT message on topic esp/trieu/humidity
+    uint16_t packetIdPub2 = mqttClient.publish(MQTT_PUB_HUM, 1, true, String(humidity).c_str());
+    Serial.printf("Publishing on topic %s at QoS 1, packetId %i: ", MQTT_PUB_HUM, packetIdPub2);
+    Serial.printf("Message: %.2f \n", humidity);
 }
