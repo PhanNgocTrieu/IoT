@@ -22,13 +22,21 @@
 
 
 
-#define WIFI_SSID "UNT8 CAFE tang2"
-#define WIFI_PASSWORD "08laclongquan"
+/* ============== DEFINE WIFI =============*/
+#define WIFI_SSID "Le An" // "Le An"
+#define WIFI_PASSWORD "hohoa46491990" 
 
+//#define WIFI_SSID "CAO COFFEE & OFFICE" // "Le An"
+//#define WIFI_PASSWORD "68686868" 
 
+/* ============== DEFINE IPADDRESS WHICH CONNECTED TO WIFI ===========*/
 // for using MQTT
-#define MQTT_HOST IPAddress(192,168,0,102) // // 192.168.0.102
+//#define MQTT_HOST IPAddress(192,168,1,211) // // 192.168.1.211 -- CAO Cofffe
+#define MQTT_HOST IPAddress(192,168,1,8) //LE AN
+
+
 #define MQTT_PORT 1883
+
 
 // Temperature MQTT Topics
 #define MQTT_PUB_TEMP "esp/trieu/temperature"
@@ -36,9 +44,9 @@
 
 // Subscribe topic:
 #define MQTT_SUB_WATERPUMP "esp/trieu/D8"
-#define MQTT_SUB_SPINNING "esp/trieu/D7"
+#define MQTT_SUB_SPINNING "esp/trieu/D3"
 
-#define MQTT_SUB_AUTO "esp/trieu/auto"
+#define MQTT_SUB_AUTO "esp/trieu/D7" // auto_custom
 
 
 AsyncMqttClient mqttClient;
@@ -54,6 +62,8 @@ Ticker wifiReconnectTimer;
 // D1 is output of reading temperature and humidity
 #define DHTPIN D1
 #define WATER_PUMPER_PIN 15
+#define AUTO_CUSTOM_PIN 13
+#define SPINNING_PIN 0
 
 
 /*======================== Defination of SOMETHINGS =========================*/
@@ -64,6 +74,17 @@ float temperature = 0.0;
 float humidity = 0.0;
 
 
+
+/* new*/
+String convertToString(char* a, int size)
+{
+    int i;
+    String s = "";
+    for (i = 0; i < size; i++) {
+        s = s + a[i];
+    }
+    return s;
+}
 
 /* ====================== MQTT's functions ==========================*/
 void connectToWifi() {
@@ -92,10 +113,10 @@ void onMqttConnect(bool sessionPresent) {
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
 
-  // Subscribe
-  uint16_t packetIdSub = mqttClient.subscribe("esp/trieu/D8", 2); // nhận => subcribe
-  Serial.print("Subscribing at QoS 2, packetId: ");
-  Serial.println(packetIdSub);
+//  // Subscribe
+//  uint16_t packetIdSub = mqttClient.subscribe("esp/trieu/D8", 2); // nhận => subcribe
+//  Serial.print("Subscribing at QoS 2, packetId: ");
+//  Serial.println(packetIdSub);
 
   // publish
   //  mqttClient.publish("test/lol", 0, true, "test 1");
@@ -146,20 +167,66 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   Serial.println(index);
   Serial.print("  total: ");
   Serial.println(total);
+  Serial.printf("  payload: %s \n",String(payload).c_str());
 
-  if (strcmp(topic,MQTT_SUB_WATERPUMP) == 0)
+
+  // AUTO PIN
+  if (strcmp(topic,MQTT_SUB_AUTO) == 0)
   {
-    char* MQTT_SUB_WATERPUMP_ON = "esp/trieu/D8/on";
-    char* MQTT_SUB_WATERPUMP_OFF = "esp/trieu/D8/off";
-    if (strcmp(payload,MQTT_SUB_WATERPUMP_ON) == 0)
+    Serial.printf("This is running in MQTT_SUB_AUTO \n");
+    if (strncmp((char* )payload,"on",2) == 0)
     {
-      digitalWrite(WATER_PUMPER_PIN, HIGH);
+      Serial.printf("Turn On D7\n");
+      digitalWrite(AUTO_CUSTOM_PIN, HIGH);
     }
-    if (strcmp(payload,MQTT_SUB_WATERPUMP_OFF) == 0)
+    if (strncmp((char*)payload,"off",3) == 0)
     {
-      digitalWrite(WATER_PUMPER_PIN, LOW);
+      Serial.printf("Turn Off D7\n");
+      digitalWrite(AUTO_CUSTOM_PIN, LOW);
     }
   }
+
+
+  // IN AUTO MODE
+  if (digitalRead(AUTO_CUSTOM_PIN) == 1)
+  {
+    int value = digitalRead(AUTO_CUSTOM_PIN);
+    Serial.println(value);
+    
+    // WATER PUMPER
+    if (strcmp(topic,MQTT_SUB_WATERPUMP) == 0)
+    {
+      Serial.printf("This is running in MQTT_SUB_WATERPUMP \n");
+      if (strncmp((char* )payload,"on",2) == 0)
+      {
+        Serial.printf("Turn On D8\n");
+        digitalWrite(WATER_PUMPER_PIN, HIGH);
+      }
+      if (strncmp((char* )payload,"off",3) == 0)
+      {
+        Serial.printf("Turn Off D8\n");
+        digitalWrite(WATER_PUMPER_PIN, LOW);
+      }
+    }
+
+
+    // FAN
+    if (strcmp(topic,MQTT_SUB_SPINNING) == 0)
+    {
+      Serial.printf("This is running in SPINNING \n");
+      if (strncmp((char* )payload,"on",2) == 0)
+      {
+        Serial.printf("Turn On D3\n");
+        digitalWrite(SPINNING_PIN, HIGH);
+      }
+      if (strncmp((char* )payload,"off",3) == 0)
+      {
+        Serial.printf("Turn Off D3\n");
+        digitalWrite(SPINNING_PIN, LOW);
+      }
+    }
+  }
+
   
 }
 
@@ -204,23 +271,22 @@ void setup() {
   mqttClient.onSubscribe(onMqttSubscribe);
   mqttClient.onUnsubscribe(onMqttUnsubscribe);
   mqttClient.onMessage(onMqttMessage);
-  mqttClient.onPublish(onMqttPublish); // Call Publish function
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT); // nap lai?
+  mqttClient.onPublish(onMqttPublish); 
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT); 
 
 
   // connecting wifi pin:
-  pinMode(16, OUTPUT);
   pinMode(2, OUTPUT);
 
 
   // WATER_PUMPER_PIN:
   pinMode(WATER_PUMPER_PIN, OUTPUT);
+  pinMode(AUTO_CUSTOM_PIN, OUTPUT);
+  pinMode(SPINNING_PIN, OUTPUT);
 
 
 
-  digitalWrite(16, LOW); // chưa kết nối;
-
-
+  digitalWrite(16, LOW); // chưa kết nối
 
   Serial.begin(115200);
 
@@ -250,8 +316,6 @@ void loop() {
 
   //Check WiFi connection status
   if (WiFi.status() == WL_CONNECTED) {
-    digitalWrite(16, HIGH);  // đã kết nối
-
     humidity = getHumidity();
 
     // Read temperature as Celsius (the default)
@@ -270,23 +334,24 @@ void loop() {
   }
 
   // Subscribe an MQTT message on topic esp/trieu/D8
-  uint16_t packetIdSub = mqttClient.subscribe(MQTT_SUB_WATERPUMP, 1); // nhận => subcribe
-  Serial.printf("Subscribing on topic %s at QoS 2, packetId: %i \n", MQTT_SUB_WATERPUMP, packetIdSub);
+  // nhận => subcribe
+  uint16_t packetIdSub1 = mqttClient.subscribe(MQTT_SUB_AUTO, 1);
+  uint16_t packetIdSub2 = mqttClient.subscribe(MQTT_SUB_WATERPUMP, 1);
+  uint16_t packetIdSub3 = mqttClient.subscribe(MQTT_SUB_SPINNING, 1);
   
 
+  
+   // Publish an MQTT message on topic esp/trieu/temperature
+  uint16_t packetIdPub1 = mqttClient.publish(MQTT_PUB_TEMP, 1, true, String(temperature).c_str());
+  Serial.printf("Publishing on topic %s at QoS 1, packetId: %i", MQTT_PUB_TEMP, packetIdPub1);
+  Serial.printf("Message: %.2f \n", temperature);
 
+  // Publish an MQTT message on topic esp/trieu/humidity
+  uint16_t packetIdPub2 = mqttClient.publish(MQTT_PUB_HUM, 1, true, String(humidity).c_str());
+  Serial.printf("Publishing on topic %s at QoS 1, packetId %i: ", MQTT_PUB_HUM, packetIdPub2);
+  Serial.printf("Message: %.2f \n", humidity);
 
-
-
-
-
-    // Publish an MQTT message on topic esp/trieu/temperature
-    uint16_t packetIdPub1 = mqttClient.publish(MQTT_PUB_TEMP, 1, true, String(temperature).c_str());
-    Serial.printf("Publishing on topic %s at QoS 1, packetId: %i", MQTT_PUB_TEMP, packetIdPub1);
-    Serial.printf("Message: %.2f \n", temperature);
-
-    // Publish an MQTT message on topic esp/trieu/humidity
-    uint16_t packetIdPub2 = mqttClient.publish(MQTT_PUB_HUM, 1, true, String(humidity).c_str());
-    Serial.printf("Publishing on topic %s at QoS 1, packetId %i: ", MQTT_PUB_HUM, packetIdPub2);
-    Serial.printf("Message: %.2f \n", humidity);
-  }
+  
+  
+ 
+}
