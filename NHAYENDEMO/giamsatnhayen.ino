@@ -113,20 +113,20 @@ void onMqttConnect(bool sessionPresent) {
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
 
-//  // Subscribe
-//  uint16_t packetIdSub = mqttClient.subscribe("esp/trieu/D8", 2); // nhận => subcribe
-//  Serial.print("Subscribing at QoS 2, packetId: ");
-//  Serial.println(packetIdSub);
+ // Subscribe
+ uint16_t packetIdSub = mqttClient.subscribe("test/lol", 2); // nhận => subcribe
+ Serial.print("Subscribing at QoS 2, packetId: ");
+ Serial.println(packetIdSub);
 
-  // publish
-  //  mqttClient.publish("test/lol", 0, true, "test 1");
-  //  Serial.println("Publishing at QoS 0");
-  //  uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
-  //  Serial.print("Publishing at QoS 1, packetId: ");
-  //  Serial.println(packetIdPub1);
-  //  uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
-  //  Serial.print("Publishing at QoS 2, packetId: ");
-  //  Serial.println(packetIdPub2);
+  publish
+   mqttClient.publish("test/lol", 0, true, "test 1");
+   Serial.println("Publishing at QoS 0");
+   uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
+   Serial.print("Publishing at QoS 1, packetId: ");
+   Serial.println(packetIdPub1);
+   uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
+   Serial.print("Publishing at QoS 2, packetId: ");
+   Serial.println(packetIdPub2);
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
